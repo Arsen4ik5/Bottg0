@@ -3,11 +3,11 @@ from telebot.types import ParseMode
 from datetime import timedelta
 import time
 
-API_TOKEN = 'YOUR_API_TOKEN'
+API_TOKEN = '6883001396:AAEbGBMpzfCjbzYXUBW8jPefiqUhoO1ixv4'
 bot = telebot.TeleBot(API_TOKEN)
 
 # Список администраторов
-admins = []
+admins = [7069906494]
 
 # Словарь для хранения временных ограничений пользователей
 muted_users = {}
