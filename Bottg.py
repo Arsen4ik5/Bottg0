@@ -1,5 +1,4 @@
 import telebot
-from telebot.types import ParseMode
 from datetime import timedelta
 import time
 
