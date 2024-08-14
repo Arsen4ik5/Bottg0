@@ -7,7 +7,7 @@ API_TOKEN = '6883001396:AAEbGBMpzfCjbzYXUBW8jPefiqUhoO1ixv4'
 bot = telebot.TeleBot(API_TOKEN)
 
 # Список администраторов
-admins = [7069906494]
+admins = [6321157988]
 
 # Словарь для хранения временных ограничений пользователей
 muted_users = {}
