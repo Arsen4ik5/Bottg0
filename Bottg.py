@@ -1,6 +1,6 @@
 import telebot
 
-bot = telebot.TeleBot("YOUR_API_TOKEN")
+bot = telebot.TeleBot("6883001396:AAEbGBMpzfCjbzYXUBW8jPefiqUhoO1ixv4")
 
 admins = [7069906494]
 
