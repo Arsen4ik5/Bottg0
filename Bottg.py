@@ -1,8 +1,5 @@
-
 import logging
-from telegram.ext import Updater, CommandHandler, MessageHandler
-from iris import IrisBot, IrisCommand, IrisMessage
-
+from telegram.ext import Updater, CommandHandler, MessageHandle
 # Enable logging
 logging.basicConfig(level=logging.INFO)
 
@@ -11,9 +8,6 @@ TOKEN = '6883001396:AAEbGBMpzfCjbzYXUBW8jPefiqUhoO1ixv4'
 
 # Define the administrator IDs
 ADMINS = [7069906494]
-
-# Define the bot
-bot = IrisBot(token=TOKEN)
 
 # Define the commands
 @bot.command('/ban')
