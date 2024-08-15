@@ -25,7 +25,7 @@ Base.metadata.create_all(engine)
 TOKEN = '6883001396:AAEbGBMpzfCjbzYXUBW8jPefiqUhoO1ixv4'
 
 # Список администраторов
-admins = set(6321157988)
+admins = {6321157988}
 
 def start(update: Update, context: CallbackContext):
     update.message.reply_text('Бот запущен!')
