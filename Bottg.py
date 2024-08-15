@@ -1,7 +1,7 @@
 import logging
-from telegram import Update, ChatMember
+from telegram import Update, ChatPermissions
 from telegram.ext import Updater, CommandHandler, CallbackContext
-from sqlalchemy import create_engine, Column, Integer, String, Sequence
+from sqlalchemy import create_engine, Column, Integer, Sequence
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from threading import Timer
@@ -23,7 +23,7 @@ class Admin(Base):
 Base.metadata.create_all(engine)
 
 # Подключение к Telegram API
-TOKEN = '6883001396:AAEbGBMpzfCjbzYXUBW8jPefiqUhoO1ixv4'
+TOKEN = 'ВАШ ТОКЕН'
 
 # Список администраторов
 admins = set()
@@ -35,16 +35,19 @@ def add_admin(update: Update, context: CallbackContext):
     if update.effective_user.id not in admins:
         update.message.reply_text('У вас нет прав для добавления администраторов.')
         return
-        
+
     if context.args:
-        user_id = int(context.args[0])
-        new_admin = Admin(user_id=user_id)
-        
-        session.add(new_admin)
-        session.commit()
-        admins.add(user_id)
-        
-        update.message.reply_text(f'Пользователь {user_id} добавлен как администратор.')
+        try:
+            user_id = int(context.args[0])
+            new_admin = Admin(user_id=user_id)
+            
+            session.add(new_admin)
+            session.commit()
+            admins.add(user_id)
+            
+            update.message.reply_text(f'Пользователь {user_id} добавлен как администратор.')
+        except ValueError:
+            update.message.reply_text('Неверный формат user_id. Убедитесь, что это число.')
     else:
         update.message.reply_text('Используйте: /addadm <user_id>')
 
@@ -53,17 +56,19 @@ def mute(update: Update, context: CallbackContext):
         update.message.reply_text('У вас нет прав для использования этой команды.')
         return
 
-    user_id = int(context.args[0])
-    duration = int(context.args[1]) if len(context.args) > 1 else 60  # По умолчанию мут на 60 секунд
-
     try:
+        user_id = int(context.args[0])
+        duration = int(context.args[1]) if len(context.args) > 1 else 60  # По умолчанию мут на 60 секунд
+
         context.bot.restrict_chat_member(
             chat_id=update.effective_chat.id,
             user_id=user_id,
-            permissions=ChatMember.permissions(),
+            permissions=ChatPermissions(can_send_messages=False),
             until_date=update.message.date.timestamp() + duration
         )
         update.message.reply_text(f'Пользователь {user_id} замучен на {duration} секунд.')
+    except (ValueError, IndexError):
+        update.message.reply_text('Используйте: /mute <user_id> [duration]')
     except Exception as e:
         logging.error(e)
         update.message.reply_text('Не удалось замутить пользователя.')
@@ -73,10 +78,10 @@ def kick(update: Update, context: CallbackContext):
         update.message.reply_text('У вас нет прав для использования этой команды.')
         return
 
-    user_id = int(context.args[0])
-    duration = int(context.args[1]) if len(context.args) > 1 else 60  # По умолчанию кик на 60 секунд
-
     try:
+        user_id = int(context.args[0])
+        duration = int(context.args[1]) if len(context.args) > 1 else 60  # По умолчанию кик на 60 секунд
+
         context.bot.kick_chat_member(
             chat_id=update.effective_chat.id,
             user_id=user_id
@@ -88,6 +93,8 @@ def kick(update: Update, context: CallbackContext):
 
         Timer(duration, unban).start()
         update.message.reply_text(f'Пользователь {user_id} кикнут на {duration} секунд.')
+    except (ValueError, IndexError):
+        update.message.reply_text('Используйте: /kick <user_id> [duration]')
     except Exception as e:
         logging.error(e)
         update.message.reply_text('Не удалось кикнуть пользователя.')
@@ -97,8 +104,11 @@ def warn(update: Update, context: CallbackContext):
         update.message.reply_text('У вас нет прав для использования этой команды.')
         return
 
-    user_id = int(context.args[0])
-    update.message.reply_text(f'Пользователь {user_id} получил варн.')
+    try:
+        user_id = int(context.args[0])
+        update.message.reply_text(f'Пользователь {user_id} получил варн.')
+    except ValueError:
+        update.message.reply_text('Неверный формат user_id. Убедитесь, что это число.')
 
 def main():
     updater = Updater(TOKEN)
