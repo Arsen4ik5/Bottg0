@@ -41,6 +41,22 @@ def mute(message):
     else:
         bot.reply_to(message, "У вас нет прав для использования этой команды.")
 
+# Команда для размута
+@bot.message_handler(commands=['unmute'])
+def unmute(message):
+    if message.from_user.id in admins:
+        try:
+            user_id = int(message.text.split()[1])
+            if user_id in mute_status:
+                del mute_status[user_id]
+                bot.reply_to(message, f"Пользователь {user_id} был размучен.")
+            else:
+                bot.reply_to(message, f"Пользователь {user_id} не замучен.")
+        except (IndexError, ValueError):
+            bot.reply_to(message, "Используйте: /unmute <user_id>")
+    else:
+        bot.reply_to(message, "У вас нет прав для использования этой команды.")
+
 # Команда для бана
 @bot.message_handler(commands=['ban'])
 def ban(message):
@@ -52,6 +68,22 @@ def ban(message):
             bot.reply_to(message, f"Пользователь {user_id} был забанен на {duration} секунд.")
         except (IndexError, ValueError):
             bot.reply_to(message, "Используйте: /ban <user_id> <duration>")
+    else:
+        bot.reply_to(message, "У вас нет прав для использования этой команды.")
+
+# Команда для разбанивания
+@bot.message_handler(commands=['unban'])
+def unban(message):
+    if message.from_user.id in admins:
+        try:
+            user_id = int(message.text.split()[1])
+            if user_id in banned_users:
+                del banned_users[user_id]
+                bot.reply_to(message, f"Пользователь {user_id} был разбанен.")
+            else:
+                bot.reply_to(message, f"Пользователь {user_id} не забанен.")
+        except (IndexError, ValueError):
+            bot.reply_to(message, "Используйте: /unban <user_id>")
     else:
         bot.reply_to(message, "У вас нет прав для использования этой команды.")
 
