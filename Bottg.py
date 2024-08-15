@@ -12,6 +12,7 @@ admins = set([7069906494])
 # Хранение состояний пользователей
 mute_status = {}
 banned_users = {}
+warn_count = {}
 
 # Команда для добавления администраторов
 @bot.message_handler(commands=['addadm'])
@@ -60,7 +61,15 @@ def warn(message):
     if message.from_user.id in admins:
         try:
             user_id = int(message.text.split()[1])
-            bot.reply_to(message, f"Пользователь {user_id} получил варн.")
+            warn_count[user_id] = warn_count.get(user_id, 0) + 1
+            bot.reply_to(message, f"Пользователь {user_id} получил варн. Всего варнов: {warn_count[user_id]}")
+            
+            # Проверка на три варна
+            if warn_count[user_id] >= 3:
+                ban_duration = 3600  # Например, 1 час
+                banned_users[user_id] = (time.time() + ban_duration)
+                bot.reply_to(message, f"Пользователь {user_id} был забанен на {ban_duration} секунд за 3 варна.")
+                del warn_count[user_id]  # Сбросить счетчик варнов
         except (IndexError, ValueError):
             bot.reply_to(message, "Используйте: /warn <user_id>")
     else:
