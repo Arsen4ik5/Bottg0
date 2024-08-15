@@ -7,7 +7,7 @@ TOKEN = "6883001396:AAEbGBMpzfCjbzYXUBW8jPefiqUhoO1ixv4"
 bot = telebot.TeleBot(TOKEN)
 
 # Список администраторов
-admins = set(7069906494)
+admins = set([7069906494])
 
 # Хранение состояний пользователей
 mute_status = {}
