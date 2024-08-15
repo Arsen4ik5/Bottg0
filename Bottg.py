@@ -1,9 +1,8 @@
 import logging
 from telegram import Update, ChatPermissions
 from telegram.ext import Updater, CommandHandler, CallbackContext
-from sqlalchemy import create_engine, Column, Integer, Sequence
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine, Column, Integer
+from sqlalchemy.orm import sessionmaker, declarative_base
 from threading import Timer
 
 # Настройка логирования
