@@ -1,129 +1,91 @@
-import logging
-from telegram import Update, ChatPermissions
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-from sqlalchemy import create_engine, Column, Integer
-from sqlalchemy.orm import sessionmaker, declarative_base
-import asyncio
+import telebot
+from telebot import types
+import time
 
-# Настройка логирования
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# Настройка базы данных
-Base = declarative_base()
-engine = create_engine('sqlite:///admins.db')
-Session = sessionmaker(bind=engine)
-session = Session()
-
-class Admin(Base):
-    __tablename__ = 'admins'
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, unique=True)
-
-Base.metadata.create_all(engine)
-
-# Подключение к Telegram API
-TOKEN = 'YOUR_TOKEN_HERE'  # Замените на свой токен
+# Инициализация бота
+TOKEN = "6883001396:AAEbGBMpzfCjbzYXUBW8jPefiqUhoO1ixv4"
+bot = telebot.TeleBot(TOKEN)
 
 # Список администраторов
-admins = {6321157988}  # Добавьте своего администратора
+admins = set()
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text('Бот запущен!')
+# Хранение состояний пользователей
+mute_status = {}
+banned_users = {}
 
-async def add_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if update.effective_user.id not in admins:
-        await update.message.reply_text('У вас нет прав для добавления администраторов.')
-        return
-
-    if context.args:
+# Команда для добавления администраторов
+@bot.message_handler(commands=['addadm'])
+def add_admin(message):
+    if message.from_user.id in admins:
         try:
-            user_id = int(context.args[0])
-            new_admin = Admin(user_id=user_id)
-            
-            session.add(new_admin)
-            session.commit()
-            admins.add(user_id)
-            
-            await update.message.reply_text(f'Пользователь {user_id} добавлен как администратор.')
-        except ValueError:
-            await update.message.reply_text('Неверный формат user_id. Убедитесь, что это число.')
-        except Exception as e:
-            logger.error(e)
-            await update.message.reply_text('Ошибка при добавлении администратора.')
+            new_admin_id = int(message.text.split()[1])
+            admins.add(new_admin_id)
+            bot.reply_to(message, f"Пользователь {new_admin_id} добавлен в администраторы.")
+        except (IndexError, ValueError):
+            bot.reply_to(message, "Используйте: /addadm <user_id>")
     else:
-        await update.message.reply_text('Используйте: /addadm <user_id>')
+        bot.reply_to(message, "У вас нет прав для использования этой команды.")
 
-async def mute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if update.effective_user.id not in admins or not context.args:
-        await update.message.reply_text('У вас нет прав для использования этой команды.')
-        return
+# Команда для мута
+@bot.message_handler(commands=['mute'])
+def mute(message):
+    if message.from_user.id in admins:
+        try:
+            user_id = int(message.text.split()[1])
+            duration = int(message.text.split()[2])
+            mute_status[user_id] = (time.time() + duration)
+            bot.reply_to(message, f"Пользователь {user_id} был замучен на {duration} секунд.")
+        except (IndexError, ValueError):
+            bot.reply_to(message, "Используйте: /mute <user_id> <duration>")
+    else:
+        bot.reply_to(message, "У вас нет прав для использования этой команды.")
 
-    try:
-        user_id = int(context.args[0])
-        duration = int(context.args[1]) if len(context.args) > 1 else 60  # По умолчанию мут на 60 секунд
+# Команда для бана
+@bot.message_handler(commands=['ban'])
+def ban(message):
+    if message.from_user.id in admins:
+        try:
+            user_id = int(message.text.split()[1])
+            duration = int(message.text.split()[2])
+            banned_users[user_id] = (time.time() + duration)
+            bot.reply_to(message, f"Пользователь {user_id} был забанен на {duration} секунд.")
+        except (IndexError, ValueError):
+            bot.reply_to(message, "Используйте: /ban <user_id> <duration>")
+    else:
+        bot.reply_to(message, "У вас нет прав для использования этой команды.")
 
-        await context.bot.restrict_chat_member(
-            chat_id=update.effective_chat.id,
-            user_id=user_id,
-            permissions=ChatPermissions(can_send_messages=False),
-            until_date=update.message.date.timestamp() + duration
-        )
-        await update.message.reply_text(f'Пользователь {user_id} замучен на {duration} секунд.')
-    except (ValueError, IndexError):
-        await update.message.reply_text('Используйте: /mute <user_id> [duration]')
-    except Exception as e:
-        logger.error(e)
-        await update.message.reply_text('Не удалось замутить пользователя.')
+# Команда для варна
+@bot.message_handler(commands=['warn'])
+def warn(message):
+    if message.from_user.id in admins:
+        try:
+            user_id = int(message.text.split()[1])
+            bot.reply_to(message, f"Пользователь {user_id} получил варн.")
+        except (IndexError, ValueError):
+            bot.reply_to(message, "Используйте: /warn <user_id>")
+    else:
+        bot.reply_to(message, "У вас нет прав для использования этой команды.")
 
-async def kick(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if update.effective_user.id not in admins or not context.args:
-        await update.message.reply_text('У вас нет прав для использования этой команды.')
-        return
+# Проверка состояний пользователей
+@bot.message_handler(func=lambda message: True)
+def check_user_status(message):
+    user_id = message.from_user.id
 
-    try:
-        user_id = int(context.args[0])
-        duration = int(context.args[1]) if len(context.args) > 1 else 60  # По умолчанию кик на 60 секунд
+    # Проверка мута
+    if user_id in mute_status:
+        if time.time() < mute_status[user_id]:
+            bot.delete_message(message.chat.id, message.message_id)
+            return
+        else:
+            del mute_status[user_id]
 
-        await context.bot.kick_chat_member(chat_id=update.effective_chat.id, user_id=user_id)
+    # Проверка бана
+    if user_id in banned_users:
+        if time.time() < banned_users[user_id]:
+            bot.kick_chat_member(message.chat.id, user_id)
+            return
+        else:
+            del banned_users[user_id]
 
-        # Сообщение для возвращения пользователя
-        await asyncio.sleep(duration)
-        await context.bot.unban_chat_member(chat_id=update.effective_chat.id, user_id=user_id)
-        await update.message.reply_text(f'Пользователь {user_id} кикнут на {duration} секунд и возвращен.')
-
-    except (ValueError, IndexError):
-        await update.message.reply_text('Используйте: /kick <user_id> [duration]')
-    except Exception as e:
-        logger.error(e)
-        await update.message.reply_text('Не удалось кикнуть пользователя.')
-
-async def warn(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if update.effective_user.id not in admins or not context.args:
-        await update.message.reply_text('У вас нет прав для использования этой команды.')
-        return
-
-    try:
-        user_id = int(context.args[0])
-        await update.message.reply_text(f'Пользователь {user_id} получил варн.')
-    except ValueError:
-        await update.message.reply_text('Неверный формат user_id. Убедитесь, что это число.')
-
-async def main() -> None:
-    application = ApplicationBuilder().token(TOKEN).build()
-
-    # Загрузка администраторов из базы данных
-    for admin in session.query(Admin).all():
-        admins.add(admin.user_id)
-
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("addadm", add_admin))
-    application.add_handler(CommandHandler("mute", mute))
-    application.add_handler(CommandHandler("kick", kick))
-    application.add_handler(CommandHandler("warn", warn))
-
-    await application.run_polling()
-
-if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+# Запуск бота
+bot.polling(none_stop=True)
