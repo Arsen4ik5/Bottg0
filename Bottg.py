@@ -75,6 +75,19 @@ def warn(message):
     else:
         bot.reply_to(message, "У вас нет прав для использования этой команды.")
 
+# Команда для кика
+@bot.message_handler(commands=['kick'])
+def kick(message):
+    if message.from_user.id in admins:
+        try:
+            user_id = int(message.text.split()[1])
+            bot.kick_chat_member(message.chat.id, user_id)
+            bot.reply_to(message, f"Пользователь {user_id} был кикнут из чата.")
+        except (IndexError, ValueError):
+            bot.reply_to(message, "Используйте: /kick <user_id>")
+    else:
+        bot.reply_to(message, "У вас нет прав для использования этой команды.")
+
 # Проверка состояний пользователей
 @bot.message_handler(func=lambda message: True)
 def check_user_status(message):
