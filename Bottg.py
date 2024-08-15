@@ -1,12 +1,13 @@
 import logging
 from telegram import Update, ChatPermissions
-from telegram.ext import Updater, CommandHandler, CallbackContext
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from sqlalchemy import create_engine, Column, Integer
 from sqlalchemy.orm import sessionmaker, declarative_base
-from threading import Timer
+import asyncio
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Настройка базы данных
 Base = declarative_base()
@@ -25,14 +26,14 @@ Base.metadata.create_all(engine)
 TOKEN = '6883001396:AAEbGBMpzfCjbzYXUBW8jPefiqUhoO1ixv4'
 
 # Список администраторов
-admins = {6321157988}
+admins = {6321157988}  # Добавьте своего администратора
 
-def start(update: Update, context: CallbackContext):
-    update.message.reply_text('Бот запущен!')
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.message.reply_text('Бот запущен!')
 
-def add_admin(update: Update, context: CallbackContext):
+async def add_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.effective_user.id not in admins:
-        update.message.reply_text('У вас нет прав для добавления администраторов.')
+        await update.message.reply_text('У вас нет прав для добавления администраторов.')
         return
 
     if context.args:
@@ -44,87 +45,84 @@ def add_admin(update: Update, context: CallbackContext):
             session.commit()
             admins.add(user_id)
             
-            update.message.reply_text(f'Пользователь {user_id} добавлен как администратор.')
+            await update.message.reply_text(f'Пользователь {user_id} добавлен как администратор.')
         except ValueError:
-            update.message.reply_text('Неверный формат user_id. Убедитесь, что это число.')
+            await update.message.reply_text('Неверный формат user_id. Убедитесь, что это число.')
+        except Exception as e:
+            logger.error(e)
+            await update.message.reply_text('Ошибка при добавлении администратора.')
     else:
-        update.message.reply_text('Используйте: /addadm <user_id>')
+        await update.message.reply_text('Используйте: /addadm <user_id>')
 
-def mute(update: Update, context: CallbackContext):
+async def mute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.effective_user.id not in admins or not context.args:
-        update.message.reply_text('У вас нет прав для использования этой команды.')
+        await update.message.reply_text('У вас нет прав для использования этой команды.')
         return
 
     try:
         user_id = int(context.args[0])
         duration = int(context.args[1]) if len(context.args) > 1 else 60  # По умолчанию мут на 60 секунд
 
-        context.bot.restrict_chat_member(
+        await context.bot.restrict_chat_member(
             chat_id=update.effective_chat.id,
             user_id=user_id,
             permissions=ChatPermissions(can_send_messages=False),
             until_date=update.message.date.timestamp() + duration
         )
-        update.message.reply_text(f'Пользователь {user_id} замучен на {duration} секунд.')
+        await update.message.reply_text(f'Пользователь {user_id} замучен на {duration} секунд.')
     except (ValueError, IndexError):
-        update.message.reply_text('Используйте: /mute <user_id> [duration]')
+        await update.message.reply_text('Используйте: /mute <user_id> [duration]')
     except Exception as e:
-        logging.error(e)
-        update.message.reply_text('Не удалось замутить пользователя.')
+        logger.error(e)
+        await update.message.reply_text('Не удалось замутить пользователя.')
 
-def kick(update: Update, context: CallbackContext):
+async def kick(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.effective_user.id not in admins or not context.args:
-        update.message.reply_text('У вас нет прав для использования этой команды.')
+        await update.message.reply_text('У вас нет прав для использования этой команды.')
         return
 
     try:
         user_id = int(context.args[0])
         duration = int(context.args[1]) if len(context.args) > 1 else 60  # По умолчанию кик на 60 секунд
 
-        context.bot.kick_chat_member(
-            chat_id=update.effective_chat.id,
-            user_id=user_id
-        )
+        await context.bot.kick_chat_member(chat_id=update.effective_chat.id, user_id=user_id)
 
         # Сообщение для возвращения пользователя
-        def unban():
-            context.bot.unban_chat_member(chat_id=update.effective_chat.id, user_id=user_id)
+        await asyncio.sleep(duration)
+        await context.bot.unban_chat_member(chat_id=update.effective_chat.id, user_id=user_id)
+        await update.message.reply_text(f'Пользователь {user_id} кикнут на {duration} секунд и возвращен.')
 
-        Timer(duration, unban).start()
-        update.message.reply_text(f'Пользователь {user_id} кикнут на {duration} секунд.')
     except (ValueError, IndexError):
-        update.message.reply_text('Используйте: /kick <user_id> [duration]')
+        await update.message.reply_text('Используйте: /kick <user_id> [duration]')
     except Exception as e:
-        logging.error(e)
-        update.message.reply_text('Не удалось кикнуть пользователя.')
+        logger.error(e)
+        await update.message.reply_text('Не удалось кикнуть пользователя.')
 
-def warn(update: Update, context: CallbackContext):
+async def warn(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.effective_user.id not in admins or not context.args:
-        update.message.reply_text('У вас нет прав для использования этой команды.')
+        await update.message.reply_text('У вас нет прав для использования этой команды.')
         return
 
     try:
         user_id = int(context.args[0])
-        update.message.reply_text(f'Пользователь {user_id} получил варн.')
+        await update.message.reply_text(f'Пользователь {user_id} получил варн.')
     except ValueError:
-        update.message.reply_text('Неверный формат user_id. Убедитесь, что это число.')
+        await update.message.reply_text('Неверный формат user_id. Убедитесь, что это число.')
 
-def main():
-    updater = Updater(TOKEN)
-    dispatcher = updater.dispatcher
+async def main() -> None:
+    application = ApplicationBuilder().token(TOKEN).build()
 
     # Загрузка администраторов из базы данных
     for admin in session.query(Admin).all():
         admins.add(admin.user_id)
 
-    dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(CommandHandler("addadm", add_admin))
-    dispatcher.add_handler(CommandHandler("mute", mute))
-    dispatcher.add_handler(CommandHandler("kick", kick))
-    dispatcher.add_handler(CommandHandler("warn", warn))
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("addadm", add_admin))
+    application.add_handler(CommandHandler("mute", mute))
+    application.add_handler(CommandHandler("kick", kick))
+    application.add_handler(CommandHandler("warn", warn))
 
-    updater.start_polling()
-    updater.idle()
+    await application.run_polling()
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())
